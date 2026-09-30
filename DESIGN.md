@@ -40,7 +40,7 @@ Paths are relative to `public/assets/`.
 | # | Requirement | Where it shows up |
 |---|-------------|-------------------|
 | R1 | Input: BOLT11 invoice + preimage (payment hash optional, it's in the invoice anyway) | input form, URL params |
-| R2 | Self-contained link `https://ln-payment-proof.utxo.at?bolt11=…&preimage=…` | `proofUrl()` in `ui/url.js` |
+| R2 | Self-contained link `https://lnproof.utxo.at?bolt11=…&preimage=…` | `proofUrl()` in `ui/url.js` |
 | R3 | Verify **in the page**: invoice signature and `SHA-256(preimage) == payment_hash` | `lnproof/` |
 | R4 | Explain **why** this is a proof, understandable for beginners | "Why this proves the payment" section |
 | R5 | Copy-paste terminal commands for macOS and Linux to verify by hand, including the signature (openssl or equivalent) | "Check it yourself" section |

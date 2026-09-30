@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://ln-payment-proof.utxo.at"><b>Try it: ln-payment-proof.utxo.at</b></a>
+  <a href="https://lnproof.utxo.at"><b>Try it: lnproof.utxo.at</b></a>
   &nbsp;·&nbsp;
   <a href="DESIGN.md">Design notes</a>
   <br><br>
@@ -29,7 +29,7 @@ doesn't know what a preimage is.
 This page turns **invoice + preimage** into one link:
 
 ```
-https://ln-payment-proof.utxo.at/?bolt11=lnbc…&preimage=…
+https://lnproof.utxo.at/?bolt11=lnbc…&preimage=…
 ```
 
 Whoever opens it sees whether the invoice was paid, why that counts as proof, and how to check it themselves.
