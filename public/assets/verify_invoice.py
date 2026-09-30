@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Independent Lightning (BOLT11) invoice decoder -- Python 3.8+ standard library only.
-# Part of https://github.com/johnzweng/ln-payment-proof (the web page generates these commands for you).
+# Part of https://github.com/johnzweng/lightning-payment-proof (the web page generates these commands for you).
 #
 # Decodes the invoice itself (no network access), checks the preimage, and writes
 # node.der, invoice.bin and signature.der so that `openssl` can check the signature.

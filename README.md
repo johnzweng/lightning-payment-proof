@@ -10,7 +10,7 @@
   &nbsp;·&nbsp;
   <a href="DESIGN.md">Design notes</a>
   <br><br>
-  <a href="https://github.com/johnzweng/ln-payment-proof/actions/workflows/test.yml"><img src="https://github.com/johnzweng/ln-payment-proof/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/johnzweng/lightning-payment-proof/actions/workflows/test.yml"><img src="https://github.com/johnzweng/lightning-payment-proof/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen" alt="No dependencies">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
@@ -66,8 +66,8 @@ covers exactly what this proves and what it doesn't.
 ## Run it locally
 
 ```sh
-git clone https://github.com/johnzweng/ln-payment-proof.git
-cd ln-payment-proof
+git clone https://github.com/johnzweng/lightning-payment-proof.git
+cd lightning-payment-proof
 python3 -m http.server 8000 --directory public
 ```
 
