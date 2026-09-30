@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>Lightning Payment Proof</title>
+  <meta name="description" content="Prove that a Bitcoin Lightning invoice was paid — verified in your browser, explained step by step, and checkable on your own computer.">
+  <meta property="og:title" content="⚡ Lightning Payment Proof">
+  <meta property="og:description" content="This link proves that a Bitcoin Lightning invoice was paid. Open it to see the verification — and check it yourself.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#0f0c1d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f6f5fb" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/app.css">
+  <script type="module" src="assets/app.js"></script>
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Lightning Payment Proof — start page">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M13.2 2 4.6 13.4h6.1L9.9 22l8.6-11.5h-6.1z"/></svg>
+      </span>
+      <span class="brand-text">Lightning Payment Proof</span>
+    </a>
+    <nav class="topnav">
+      <a href="#verify" class="topnav-link" id="nav-verify" hidden>Check it yourself</a>
+      <a href="./" class="btn btn-small btn-ghost" id="nav-new" hidden>New proof</a>
+    </nav>
+  </header>
+
+  <main id="app" class="wrap">
+    <noscript>
+      <div class="card callout callout-warn">
+        <p><strong>This page needs JavaScript</strong> to decode and verify the invoice in your browser. Nothing is sent to any server.</p>
+      </div>
+    </noscript>
+
+    <!-- Input view -->
+    <section id="view-input" hidden>
+      <div class="hero">
+        <p class="eyebrow">Bitcoin ⚡ Lightning</p>
+        <h1>Prove a Lightning payment<br><span class="grad">with a single link.</span></h1>
+        <p class="lead">Paste the invoice you paid and the <em>preimage</em> your wallet received as a receipt.
+          This page verifies both, explains in plain words why it is a proof, and creates a link you can send to the recipient.</p>
+      </div>
+
+      <form id="proof-form" class="card form-card" novalidate autocomplete="off">
+        <div class="field">
+          <label for="in-bolt11"><span class="field-num">1</span> Lightning invoice</label>
+          <textarea id="in-bolt11" name="bolt11" rows="4" spellcheck="false" autocapitalize="off" placeholder="lnbc…" aria-describedby="err-bolt11"></textarea>
+          <p class="field-hint">The payment request you received from the recipient. It starts with <code>lnbc</code>.</p>
+          <p class="field-error" id="err-bolt11" hidden></p>
+        </div>
+        <div class="field">
+          <label for="in-preimage"><span class="field-num">2</span> Preimage <span class="muted">— the receipt</span></label>
+          <input id="in-preimage" name="preimage" type="text" spellcheck="false" autocapitalize="off" placeholder="64 characters, 0–9 and a–f" aria-describedby="err-preimage">
+          <p class="field-hint">Shown by your wallet in the details of a completed payment, usually called <em>“preimage”</em> or <em>“proof of payment”</em>.</p>
+          <p class="field-error" id="err-preimage" hidden></p>
+        </div>
+        <details class="field field-optional" id="opt-hash">
+          <summary><span class="field-num field-num-muted">3</span> Payment hash <span class="muted">— optional</span></summary>
+          <input id="in-hash" name="hash" type="text" spellcheck="false" autocapitalize="off" placeholder="64 characters (only for cross-checking)" aria-label="Payment hash">
+          <p class="field-hint">Not needed — it is already contained in the invoice. If you enter it, it will be compared with the invoice.</p>
+        </details>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Verify &amp; create link</button>
+          <button type="button" class="btn btn-ghost" id="btn-example">Try an example</button>
+        </div>
+        <p class="privacy-note">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Everything is computed in your browser. The invoice and preimage are never uploaded.
+        </p>
+      </form>
+
+      <div class="intro-steps">
+        <div class="intro-step"><span class="intro-ico ico-lock" data-icon="lock"></span><div><strong>Invoice</strong><br>the receiver asks for money and signs the request</div></div>
+        <div class="intro-arrow" aria-hidden="true">→</div>
+        <div class="intro-step"><span class="intro-ico ico-bolt" data-icon="bolt"></span><div><strong>Payment</strong><br>the money can only be taken with a secret</div></div>
+        <div class="intro-arrow" aria-hidden="true">→</div>
+        <div class="intro-step"><span class="intro-ico ico-key" data-icon="key"></span><div><strong>Receipt</strong><br>taking the money hands the secret to the payer</div></div>
+      </div>
+    </section>
+
+    <!-- Result view, rendered by assets/app.js -->
+    <section id="view-result" hidden></section>
+  </main>
+
+  <footer class="footer wrap">
+    <p>Computed locally in your browser · no data stored · based on the open Lightning standard
+      <a href="https://github.com/lightning/bolts/blob/master/11-payment-encoding.md" target="_blank" rel="noopener noreferrer">BOLT #11</a></p>
+    <p class="muted">A tool by <a href="https://x.com/wauzibauzi" target="_blank" rel="noopener noreferrer">johnzweng</a> ·
+      <a href="https://github.com/johnzweng/ln-payment-proof" target="_blank" rel="noopener noreferrer">Source code on GitHub</a> ·
+      <a href="assets/verify_invoice.py" target="_blank" rel="noopener">Independent Python verifier</a></p>
+  </footer>
+</body>
+</html>

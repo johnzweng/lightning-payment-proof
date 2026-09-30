@@ -1,0 +1,15 @@
+{
+  "name": "ln-payment-proof",
+  "version": "1.0.0",
+  "description": "Prove that a Bitcoin Lightning invoice was paid — with a single link.",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "./test/run-tests.sh",
+    "start": "python3 -m http.server 8000 --directory public"
+  }
+}
