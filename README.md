@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Prove that a Bitcoin Lightning invoice was paid — with a single link.</b><br>
-  Verified in the browser · explained in plain words · checkable in your own terminal
+  Verified in the browser · explained in plain words · checkable in your own terminal · zero dependencies
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
   <a href="DESIGN.md">Design notes</a>
   <br><br>
   <a href="https://github.com/johnzweng/lightning-payment-proof/actions/workflows/test.yml"><img src="https://github.com/johnzweng/lightning-payment-proof/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
-  <img src="https://img.shields.io/badge/dependencies-none-brightgreen" alt="No dependencies">
+  <a href="#zero-dependencies-on-purpose"><img src="https://img.shields.io/badge/dependencies-none-brightgreen" alt="No dependencies"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
@@ -48,6 +48,8 @@ covers exactly what this proves and what it doesn't.
 
 ## Features
 
+- **Zero dependencies.** No npm packages, no CDN, no build step, no framework. See
+  [why](#zero-dependencies-on-purpose).
 - **Private.** Everything is computed in your browser. Invoice and preimage are never uploaded.
 - **Plain words.** A clear verdict first, then a one-minute explanation for non-experts.
 - **No trust required.** Copy-paste commands for macOS and Linux repeat every check with
@@ -55,13 +57,43 @@ covers exactly what this proves and what it doesn't.
 - **Receiver details.** Node id, explorer links and route hints, plus an explanation of why a
   private node is still a valid proof.
 - **Spark wallets** are recognized, and their Spark address is shown.
-- **Zero dependencies.** No build step, no frameworks, no trackers, no external fonts.
 
 <details>
 <summary><b>Screenshot: “Check it yourself” (dark mode)</b></summary>
 <br>
 <img src="docs/screenshot-check-yourself.png" alt="Terminal command to compute SHA-256 of the preimage, with the expected output" width="820">
 </details>
+
+## Zero dependencies, on purpose
+
+Every line of code that runs is in this repository and was written for it:
+
+- **In the browser:** plain JavaScript files, loaded exactly as they are. There are no npm
+  packages, no bundler, no framework, no CDN, no web fonts and no trackers. SHA-256, secp256k1,
+  bech32 and the BOLT11 decoder are implemented in [`lnproof/`](public/assets/lnproof),
+  about 800 readable lines.
+- **In the terminal:** the Python verifier uses only the standard library, and the other
+  commands use tools that come with macOS and most Linux systems (`shasum`, `xxd`, `openssl`).
+- **For the tests:** Node's built-in test runner, `python3` and `openssl`. There's no
+  `npm install`.
+
+**Why?** A page that asks you to trust its verdict has to be easy to check:
+
+- **Readable.** You can read everything the page runs, in a few small files.
+  What you see on GitHub is exactly what your browser loads, with no minified bundle in between.
+- **Nothing to hijack.** A compromised package or CDN can't change what the page shows, because
+  there are none. Crypto and wallet libraries are popular targets for supply-chain attacks. This
+  is also why the Content-Security-Policy can allow scripts from the page's own server only.
+- **Private.** No third-party script ever sees a proof link.
+- **Built to last.** A proof link should still work in ten years. Static files with nothing to
+  update, patch or rebuild will.
+
+**What about writing our own crypto?** The usual warning is about *secret* keys: signing,
+[side channels](https://en.wikipedia.org/wiki/Side-channel_attack) and constant-time code. This
+page only *verifies* public data: it holds no keys and signs nothing. The code is tested against
+the official BOLT #11 test vectors and SHA-256 known answers, and cross-checked with an
+independent Python implementation and openssl. More in
+[DESIGN.md §4.2](DESIGN.md#42-no-dependencies-no-build-step-own-crypto-code).
 
 ## Run it locally
 
