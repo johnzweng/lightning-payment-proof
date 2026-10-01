@@ -137,7 +137,7 @@ function independentCheck({ invoice, preimage }, number) {
           'Invoice checksum : OK\n',
           'Payment hash     : ', ['hash', invoice.paymentHash], '\n',
           'Receiver node id : ', ['node', invoice.nodeId], ' (…)\n',
-          preimage ? 'Preimage matches : YES - the invoice was paid\n' : '',
+          preimage ? 'Preimage matches : YES - matches the invoice payment hash\n' : '',
           '…\nVerified OK',
         ], 'Expected output (excerpt)'),
         downloadVariant(invoiceArg, preimageArgs));

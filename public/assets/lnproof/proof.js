@@ -1,4 +1,5 @@
-// Proof of payment: a correctly signed invoice plus a preimage whose SHA-256 is the invoice's payment hash.
+// Cryptographic payment-evidence checks: signature under the displayed key + matching preimage.
+// Receiver identity and how the preimage was obtained are not established here (see DESIGN.md §3).
 
 import { decodeInvoice } from './bolt11.js';
 import { bytesToHex, hexToBytes } from './bytes.js';
@@ -12,6 +13,7 @@ export function normalizeHex(input) {
 /**
  * Verifies a proof of payment. Throws if the invoice cannot be decoded.
  * The preimage and the payment hash are optional; the payment hash is only cross-checked.
+ * `proven` reports those cryptographic checks, not authenticated receiver identity or settlement provenance.
  */
 export function verifyProof(bolt11, preimageInput, paymentHashInput) {
   const invoice = decodeInvoice(bolt11);

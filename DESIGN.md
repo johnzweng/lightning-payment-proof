@@ -67,23 +67,42 @@ Added later, after looking at real-world invoices:
 
 ## 3. What the proof proves (the trust model)
 
-This drives much of the wording on the page, so it is spelled out here:
+This drives much of the wording on the page, so it is spelled out here. The simple headline
+"This invoice has been paid" assumes the receiver recognizes their invoice and receiving node,
+and that the preimage was kept secret until payment. We keep that headline and the short
+explanation approachable; the qualifications below belong in "What exactly does this prove —
+and what not?", not in the main verdict.
 
 - **The invoice is authentic.** It carries an ECDSA/secp256k1 signature by the receiver's node
-  over the whole invoice. Nobody can change amount, hash or description without breaking it.
+  over the signed invoice contents. Nobody can change amount, hash or description while
+  preserving a valid signature **under the original receiver's public key**.
 - **The preimage matches.** `SHA-256(preimage) == payment_hash`. SHA-256 is preimage-resistant:
-  given `H`, nobody can find `P`. So whoever holds `P` got it from the receiver's side.
-- **Nodes only release `P` when they accept the payment** (at least the invoice amount; the
-  receiver rejects underpayment per BOLT 4). The sender holding `P` is therefore evidence
-  that the receiver's node **claimed** the payment.
+  finding `P` for a given `H` is computationally infeasible. If `P` was kept secret until
+  settlement, possession of it is evidence that it was released through payment.
+- **In normal operation, nodes release `P` when they accept the payment** (at least the invoice
+  amount; the receiver rejects underpayment per BOLT 4). Subject to the assumptions below,
+  the sender holding `P` is evidence that the receiver's node **claimed** the payment.
+
+BOLT11's optional `n` field states the public key; without it, the key is recovered from the
+signature and signed contents. Omitting `n` does **not** weaken verification against a known
+receiver key. However, changing an invoice without re-signing can produce a **different
+recovered key**, under which the unchanged signature verifies. This is not a forgery against
+the original receiver and does not demonstrate knowledge of the new key's private key.
+Keeping `n` makes the change fail against its stated key, but an attacker can remove `n` and
+recompute the Bech32 checksum. Neither encoding replaces checking your invoice and node ID.
+
+`verifyProof().proven` means only that the signature verifies under the displayed key and the
+preimage matches. It does not independently authenticate the receiver or establish how the
+preimage was obtained. A leaked, shared, or deliberately disclosed preimage can also match;
+the checks cannot distinguish that from normal settlement.
 
 What the proof does **not** say, which the page states in "What exactly does this prove — and
 what not?":
 
-- It does not contain the payer's identity. The argument is that `P` goes only to whoever paid
-  this invoice, and the invoice was issued to the sender.
-- It gives no exact time. It normally lies between invoice creation and expiry, because
-  nodes refuse expired invoices.
+- It does not contain the payer's identity. A preimage can be copied and shared; its current
+  holder need not be the payer.
+- It gives no exact time. Payment normally lies between invoice creation and expiry, but
+  these dates are not cryptographic evidence of settlement time.
 - It does not show whether a **custodial/hosted wallet** credited the user's account. The node belongs to the
   service; the money reached the service. The user can contact the service with the payment hash.
 - The "payment secret" (`s` field) is **not** the preimage. This is a common confusion, so it is
@@ -223,9 +242,10 @@ and was tested with the macOS system Python 3.9, 3.11, 3.12 and 3.15.
   `Verification failure`.
 
 ### 5.3 Signature details
-- If the invoice has an `n` field, we verify against it *and* check that public-key recovery gives
-  the same key. Without `n`, the key is recovered from the signature (recovery id) as the spec
-  requires.
+- If the invoice has an `n` field, we verify against it and report whether public-key recovery
+  gives the same key; that comparison is diagnostic, not a condition of acceptance. Without
+  `n`, the key is recovered from the signature (recovery id) as the spec requires. In either
+  case, the receiver must recognize their invoice and receiving node (§3).
 - High-S signatures are flagged but not rejected. openssl accepts them too, and a disagreement
   between page and terminal would confuse users more than it helps.
 

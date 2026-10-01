@@ -10,11 +10,13 @@
 #   2. Run it in an empty temporary folder:
 #        cd "$(mktemp -d)"
 #        python3 ~/Downloads/verify_invoice.py "<invoice lnbc...>" "<preimage>"
-#      Expected: "Invoice checksum : OK" and "Preimage matches : YES - the invoice was paid"
+#      Expected: "Invoice checksum : OK" and "Preimage matches : YES - matches the invoice payment hash"
 #   3. Let openssl check the invoice signature with the files it wrote:
 #        openssl ec -pubin -inform DER -in node.der -out node.pem 2>/dev/null
 #        openssl dgst -sha256 -verify node.pem -signature signature.der invoice.bin
 #      Expected: "Verified OK"
+# These checks do not establish that this is your receiving node or how the sender obtained the preimage.
+# Compare with your own invoice and node ID, or confirm the receiving node with your wallet provider/LSP.
 import sys, hashlib, datetime, csv
 
 CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
@@ -188,5 +190,7 @@ print("Receiver node id : %s (%s)" % (node_id, how))
 if preimage:
     h = hashlib.sha256(bytes.fromhex(preimage)).hexdigest()
     print("SHA-256(preimage): %s" % h)
-    print("Preimage matches : %s" % ("YES - the invoice was paid" if h == payment_hash else "NO"))
+    print("Preimage matches : %s" % ("YES - matches the invoice payment hash" if h == payment_hash else "NO"))
 print("Wrote node.der, invoice.bin, signature.der - now let openssl check the signature.")
+print("Compare this with your own invoice and node ID, or confirm the receiving node with your wallet provider/LSP.")
+print("Payment evidence assumes your preimage stayed secret until payment.")
