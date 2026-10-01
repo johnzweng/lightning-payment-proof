@@ -27,8 +27,9 @@ export function receiverSection({ invoice }) {
 
   return section('receiver', {
     eyebrow: 'Who got paid',
-    title: 'The receiver’s node',
-    lead: 'Every Lightning wallet runs on a node with a unique id — its public key. This invoice was signed by this node:',
+    title: 'Is this your node or receiving service?',
+    lead: 'Check that this is your invoice and that the node ID below belongs to your node or the wallet service/LSP receiving payments for you. ' +
+      'If both match, the matching receipt is evidence that your node or service accepted the payment.',
   },
     receiverNodeCard(invoice, (result) => showLookupNote(result.status)),
     invoice.spark ? sparkWalletCard(invoice) : null,

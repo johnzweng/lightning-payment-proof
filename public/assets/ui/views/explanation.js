@@ -2,7 +2,7 @@
 
 import { hexShort, hexValue, section } from '../components.js';
 import { h, icon } from '../dom.js';
-import { formatDate, formatSats } from '../format.js';
+import { formatSats } from '../format.js';
 
 // Descriptions of hosted (custodial) wallets, where the fine print about services matters most.
 const HOSTED_WALLET_HINT = /wallet of satoshi|custod|coinos|strike|blink|getalby|cash app|primal|minibits|cashu/i;
@@ -97,17 +97,22 @@ function finePrint(invoice) {
   return h('details', { class: 'fineprint' },
     h('summary', null, icon('info', 'icon-sm'), 'What exactly does this prove — and what not?'),
     h('ul', null,
-      item('Proven', 'the node that signed this invoice released the secret for it. Standard Lightning software does this only ' +
-        'when it accepts an incoming payment of at least the requested amount.'),
-      item('When', 'nodes accept payments only while an invoice is valid, so the payment normally happened between ',
-        formatDate(invoice.timestamp), ' and ', formatDate(invoice.expiresAt), '. The exact moment is not part of the proof.'),
-      item('Who paid', 'the receipt doesn’t contain a name. But it is only handed to whoever paid the invoice — and this invoice was issued to the sender.'),
+      item('Is this your invoice?', 'compare the Lightning invoice shown on this page with the payment request you created in your wallet and sent to the sender. ' +
+        'Check the displayed node ID against your own node ID, or confirm with your ' +
+        'wallet provider/LSP that it is a node receiving payments for you. Use your own records or trusted provider information, not just an explorer name. ' +
+        'A provider’s node ID alone does not identify your particular invoice.'),
+      item('What a match means', 'if this is your invoice and your receiving node, a matching preimage is evidence that your node or service accepted the payment, ' +
+        'provided the preimage stayed secret until payment. Normal Lightning software releases it when accepting at least the requested amount.'),
+      item('What this page checks', 'the signature verifies under the displayed public key and the preimage matches the payment hash. ' +
+        'The page cannot establish that this is your node, or rule out the preimage being leaked or shared outside a payment.'),
+      item('Optional node-key field', 'without BOLT11’s “n” field, the key is recovered from the signature. This does not weaken the proof against your known node ID. ' +
+        'But changing the invoice can produce a different recovered key with a verifying signature—not a valid signature under your original node ID.'),
+      item('Who paid', 'the receipt contains no payer identity. A preimage can be copied and shared, so its current holder need not be the payer.'),
       h('li', { class: likelyHosted ? 'hl' : null }, h('strong', null, 'Wallet apps & services: '),
-        'if the receiver uses a hosted wallet (for example Wallet of Satoshi), the node belongs to that service. ' +
-        'The money then arrived at the service and should show up in the receiver’s account there. ' +
-        'If not, the receiver can contact the service with the ', h('b', { class: 'c-hash' }, 'payment hash'), '.',
+        'if a wallet service receives payments for you, evidence that its node accepted the payment does not establish that it credited your account. ' +
+        'If the payment is missing in your wallet, contact your provider with the ', h('b', { class: 'c-hash' }, 'payment hash'), '.',
         invoice.spark ? [' This invoice belongs to a ', h('a', { href: '#spark' }, 'Spark wallet'),
-          ': the payment is handed to the wallet by a Spark service provider.'] : null),
+          ': a Spark service provider handles the Lightning payment. This page does not independently check Spark operator behavior or your wallet balance.'] : null),
       item('Not to be confused', 'the invoice also contains a “payment secret”. That is a different value, not the preimage — ' +
         'the preimage is never inside the invoice.')));
 }
