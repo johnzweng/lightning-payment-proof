@@ -16,11 +16,11 @@ import { verifyYourselfSection } from './ui/views/verify-yourself.js';
 const PAGE_TITLE = 'Lightning Payment Proof';
 const EMPTY_INPUTS = { bolt11: '', preimage: '', hash: '' };
 
-// A real payment (Wallet of Satoshi, Spark-based) used by the "Try an example" button.
+// A real payment used by the "Try an example" button.
 const EXAMPLE_INPUTS = {
-  bolt11: 'lnbc286050n1p4tetxlpp524jfexmca98flrqzdqrwxt5n7lzwwv8x77mckzw4ajstwsmex2gqsp52u00ael68v8yrt2cms6pyj93ftgyy9n6rk7lren03p52hjs5jwjsxq9z0rgqnp4qvyndeaqzman7h898jxm98dzkm0mlrsx36s93smrur7h0azyyuxc5rzjqwghf7zxvfkxq5a6sr65g0gdkv768p83mhsnt0msszapamzx2qvuxqqqqrt49lmtcqqqqqqqqqqq86qq9qrzjq0qvdqygawseu8s2x34fl63ss3pxfy66tjy5z88q649jtc8ymz4wfapyqr6zgqqqq8hxk2qqae4jsqyugqcqzpudz82pshjgr5dus9wctvd3jhggr0vcs9xct5daeks6fqw4ek2u36yp68yctswpjkgunfvgcnxdc9qyyssq5eaumrd9727u9eyef3lds7jpxcfyzftuaay09rg277l5jlqxp2ms4n4qmxtlquazs5x5gpzwk73s3lrwpy69qwyzezn42samqgn906qq7c4qfm',
-  preimage: 'c420c4e4e7eebab9ab0d589055bfb7c6958401095f550c382028cf249d39d127',
-  hash: '',
+  bolt11: 'lnbc123450n1p5cprkppp5xwmjlgvrj5mjqxgdmkj604tm7pdmphtfm0nt2w658zhwp8034qcshp5vyechhpl6zgtmhxnavaf9t4gnwswx5rmhaw35tt7z3v8nccd2d8qcqzxrxqrxl9sp5nwwqxz2dydguzjugzrsljqpaexa8g3s44y7kzjad393d577ezw7q9qxpqysgq4x347pfq5kcetje9chpdw0hdxpgwuzyc8crttywy3999p2whkf44gtzzz9v6ljd0d8afm2u7k0v5esrcchsm4tzamnfmw6tagqrup5gqsunfaf',
+  preimage: 'feb16f282c6de9fa954a2179f881d0987a5c3d0d59d192c3adf0b8fb1d3a8174',
+  hash: '33b72fa183953720190ddda5a7d57bf05bb0dd69dbe6b53b5438aee09df1a831',
 };
 
 /* ---------- views ---------- */
