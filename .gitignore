@@ -3,3 +3,6 @@
 .vscode/
 node_modules/
 __pycache__/
+
+# Optional export from a real Lightning node; invoices may contain private payment data.
+/test/data/test_data_pre-images.csv

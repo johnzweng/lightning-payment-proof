@@ -177,6 +177,39 @@ Needs Node.js ≥ 20, `python3` and `openssl`. The tests cover the BOLT #11 spec
 real-world invoice, the Spark SDK vectors, SHA-256 known answers, and the Python + openssl path
 offered on the page.
 
+### Testing with a real CLN export
+
+The test harness can verify every completed payment from your own Core Lightning PostgreSQL
+backend with both the JavaScript used by the page and the independent Python verifier. Export the
+query below as CSV with the header `payment_preimage,bolt11`:
+
+```sql
+SELECT DISTINCT ON (payment_hash, groupid)
+       encode(payment_preimage, 'hex') AS payment_preimage,
+       bolt11
+FROM public.payments
+WHERE status = 1   -- PAYMENT_COMPLETE
+  AND bolt11 IS NOT NULL
+  AND payment_preimage IS NOT NULL
+ORDER BY payment_hash, groupid, completed_at DESC NULLS LAST, id DESC;
+```
+
+For example, with `psql`:
+
+```sh
+mkdir -p test/data
+psql "$DATABASE_URL" --csv -P footer=off -c \
+  "SELECT DISTINCT ON (payment_hash, groupid) encode(payment_preimage, 'hex') AS payment_preimage, bolt11 FROM public.payments WHERE status = 1 AND bolt11 IS NOT NULL AND payment_preimage IS NOT NULL ORDER BY payment_hash, groupid, completed_at DESC NULLS LAST, id DESC" \
+  > test/data/test_data_pre-images.csv
+./test/run-tests.sh
+```
+
+`test/data/test_data_pre-images.csv` is intentionally ignored by Git because invoices may contain
+personal payment information. **Never force-add or commit it.** Without that private file, the same
+harness runs against the committed public placeholder
+[`test_data_pre-images.example.csv`](test/data/test_data_pre-images.example.csv), so CI still tests
+the setup. Bulk-test failures print only a row number, not the invoice or preimage.
+
 ## Privacy
 
 - **In the browser:** decoding and every check run locally.

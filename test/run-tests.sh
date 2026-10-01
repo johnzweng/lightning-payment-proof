@@ -10,6 +10,10 @@ node --test test/*.test.js
 echo
 echo "# python3 + openssl (independent path)"
 SCRIPT="$PWD/public/assets/verify_invoice.py"
+PAYMENT_DATA="$PWD/test/data/test_data_pre-images.csv"
+if [ ! -f "$PAYMENT_DATA" ]; then
+  PAYMENT_DATA="$PWD/test/data/test_data_pre-images.example.csv"
+fi
 # Real invoice with explicit node id (n field), and its preimage
 REAL_INVOICE='lnbc286050n1p4tetxlpp524jfexmca98flrqzdqrwxt5n7lzwwv8x77mckzw4ajstwsmex2gqsp52u00ael68v8yrt2cms6pyj93ftgyy9n6rk7lren03p52hjs5jwjsxq9z0rgqnp4qvyndeaqzman7h898jxm98dzkm0mlrsx36s93smrur7h0azyyuxc5rzjqwghf7zxvfkxq5a6sr65g0gdkv768p83mhsnt0msszapamzx2qvuxqqqqrt49lmtcqqqqqqqqqqq86qq9qrzjq0qvdqygawseu8s2x34fl63ss3pxfy66tjy5z88q649jtc8ymz4wfapyqr6zgqqqq8hxk2qqae4jsqyugqcqzpudz82pshjgr5dus9wctvd3jhggr0vcs9xct5daeks6fqw4ek2u36yp68yctswpjkgunfvgcnxdc9qyyssq5eaumrd9727u9eyef3lds7jpxcfyzftuaay09rg277l5jlqxp2ms4n4qmxtlquazs5x5gpzwk73s3lrwpy69qwyzezn42samqgn906qq7c4qfm'
 REAL_PREIMAGE='c420c4e4e7eebab9ab0d589055bfb7c6958401095f550c382028cf249d39d127'
@@ -23,6 +27,9 @@ cd "$WORKDIR"
 
 pass() { echo "ok - $1"; }
 fail() { echo "not ok - $1"; exit 1; }
+
+python3 "$SCRIPT" --csv "$PAYMENT_DATA" || fail "exported invoice/preimage pairs: Python verification"
+pass "exported invoice/preimage pairs: Python verification"
 
 openssl_verifies() {
   openssl ec -pubin -inform DER -in node.der -out node.pem 2>/dev/null &&

@@ -15,20 +15,10 @@
 #        openssl ec -pubin -inform DER -in node.der -out node.pem 2>/dev/null
 #        openssl dgst -sha256 -verify node.pem -signature signature.der invoice.bin
 #      Expected: "Verified OK"
-import sys, hashlib, datetime
+import sys, hashlib, datetime, csv
 
 CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
-invoice = "".join(sys.argv[1].split()).lower()
-if invoice.startswith("lightning:"):
-    invoice = invoice[len("lightning:"):]
-preimage = sys.argv[2].strip().lower() if len(sys.argv) > 2 else ""
 
-# --- 1. bech32: split "human readable part" and data, verify the checksum ---------
-sep = invoice.rfind("1")
-hrp, data_part = invoice[:sep], invoice[sep + 1:]
-if sep < 1 or any(c not in CHARSET for c in data_part):
-    sys.exit("This is not a valid Lightning invoice (unexpected characters)")
-data = [CHARSET.index(c) for c in data_part]
 
 def polymod(values):
     gen, chk = [0x3B6A57B2, 0x26508E6D, 0x1EA119FA, 0x3D4233DD, 0x2A1462B3], 1
@@ -39,10 +29,6 @@ def polymod(values):
             chk ^= gen[i] if (top >> i) & 1 else 0
     return chk
 
-if polymod([ord(c) >> 5 for c in hrp] + [0] + [ord(c) & 31 for c in hrp] + data) != 1:
-    sys.exit("Invoice checksum is WRONG (typo or incomplete copy)")
-data = data[:-6]                            # drop the checksum
-body, sig5 = data[:-104], data[-104:]       # the last 520 bits are the signature
 
 def to_bytes(groups, pad=False):            # 5-bit groups -> bytes
     acc = bits = 0
@@ -56,19 +42,84 @@ def to_bytes(groups, pad=False):            # 5-bit groups -> bytes
         out.append((acc << (8 - bits)) & 255)
     return bytes(out)
 
+
 def to_int(groups):
     n = 0
     for g in groups:
         n = n * 32 + g
     return n
 
-# --- 2. tagged fields: 1 group type, 2 groups length, then the data --------------
-fields, i = {}, 7                           # the first 7 groups are the timestamp
-while i < len(body):
-    tag, length = CHARSET[body[i]], body[i + 1] * 32 + body[i + 2]
-    fields.setdefault(tag, []).append(body[i + 3:i + 3 + length])
-    i += 3 + length
 
+def decode_invoice(raw_invoice):
+    invoice = "".join(raw_invoice.split()).lower()
+    if invoice.startswith("lightning:"):
+        invoice = invoice[len("lightning:"):]
+
+    # --- 1. bech32: split the human-readable part and verify the checksum --------
+    sep = invoice.rfind("1")
+    hrp, data_part = invoice[:sep], invoice[sep + 1:]
+    if sep < 1 or any(c not in CHARSET for c in data_part):
+        raise ValueError("This is not a valid Lightning invoice (unexpected characters)")
+    data = [CHARSET.index(c) for c in data_part]
+    if polymod([ord(c) >> 5 for c in hrp] + [0] + [ord(c) & 31 for c in hrp] + data) != 1:
+        raise ValueError("Invoice checksum is WRONG (typo or incomplete copy)")
+    data = data[:-6]                         # drop the checksum
+    body, sig5 = data[:-104], data[-104:]    # the last 520 bits are the signature
+
+    # --- 2. tagged fields: type, length, then data -------------------------------
+    fields, i = {}, 7                        # the first 7 groups are the timestamp
+    while i < len(body):
+        if i + 3 > len(body):
+            raise ValueError("Invoice field header is truncated")
+        tag, length = CHARSET[body[i]], body[i + 1] * 32 + body[i + 2]
+        value = body[i + 3:i + 3 + length]
+        if len(value) != length:
+            raise ValueError("Invoice field is truncated")
+        fields.setdefault(tag, []).append(value)
+        i += 3 + length
+    if "p" not in fields:
+        raise ValueError("Invoice has no payment hash")
+    return invoice, hrp, body, sig5, fields
+
+
+def verify_csv(path):
+    """Bulk-check exported payment proofs without printing private row contents."""
+    count = 0
+    with open(path, newline="", encoding="utf-8-sig") as source:
+        rows = csv.DictReader(source)
+        if rows.fieldnames != ["payment_preimage", "bolt11"]:
+            raise ValueError("expected CSV header: payment_preimage,bolt11")
+        for row_number, row in enumerate(rows, 2):
+            try:
+                _, _, _, _, row_fields = decode_invoice(row["bolt11"])
+                payment_hash = to_bytes(row_fields["p"][0]).hex()
+                preimage = row["payment_preimage"].strip().lower()
+                if len(preimage) != 64:
+                    raise ValueError("preimage is not 64 hexadecimal characters")
+                if hashlib.sha256(bytes.fromhex(preimage)).hexdigest() != payment_hash:
+                    raise ValueError("preimage does not match the invoice payment hash")
+            except Exception as error:
+                raise ValueError("CSV verification failed at row %d: %s" % (row_number, error)) from None
+            count += 1
+    if count == 0:
+        raise ValueError("CSV contains no payment rows")
+    print("Verified %d invoice/preimage pairs with Python" % count)
+
+
+if len(sys.argv) > 1 and sys.argv[1] == "--csv":
+    if len(sys.argv) != 3:
+        sys.exit("Usage: verify_invoice.py --csv <payment_preimage,bolt11.csv>")
+    try:
+        verify_csv(sys.argv[2])
+    except (OSError, ValueError) as error:
+        sys.exit(str(error))
+    sys.exit(0)
+
+try:
+    invoice, hrp, body, sig5, fields = decode_invoice(sys.argv[1])
+except ValueError as error:
+    sys.exit(str(error))
+preimage = sys.argv[2].strip().lower() if len(sys.argv) > 2 else ""
 payment_hash = to_bytes(fields["p"][0]).hex()
 created = datetime.datetime.fromtimestamp(to_int(body[:7]), datetime.timezone.utc)
 description = to_bytes(fields["d"][0]).decode("utf-8", "replace") if "d" in fields else "(none)"
