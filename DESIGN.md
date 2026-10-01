@@ -324,9 +324,14 @@ operates them, so we don't claim it.
 - SHA-256 known answers;
 - Spark: SDK address vector, legacy address, fallback-v31 sample (embedded in a synthetic invoice);
 - number, date and amount formatting;
-- the Python script + openssl path, including tampered-data and typo negative tests.
+- the Python script + openssl path, including tampered-data and typo negative tests;
+- an optional, Git-ignored CLN CSV export (`payment_preimage,bolt11`), checked row-by-row by the
+  browser's JavaScript library (including signatures) and by the independent Python checksum,
+  invoice-field and preimage verifier. Failures identify only row numbers, so test output does not
+  disclose payment data. CI uses a committed public example row to exercise the same harness.
 
-GitHub Actions runs the same script on every push.
+GitHub Actions runs the same script on every push. Private CLN exports are never committed or used
+in CI.
 
 The UI was checked manually in Chrome (desktop, iPhone emulation, light and dark) against the
 real nginx config in a local container, and the generated terminal commands were executed
