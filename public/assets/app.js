@@ -25,13 +25,20 @@ const EXAMPLE_INPUTS = {
 
 /* ---------- views ---------- */
 
+let currentView = null;
+
 function showView(name) {
   const isResult = name === 'result';
   $('#view-input').hidden = isResult;
   $('#view-result').hidden = !isResult;
   $('#nav-verify').hidden = !isResult;
   $('#nav-new').hidden = !isResult;
-  window.scrollTo(0, 0);
+  // Only scroll when the view actually changes: re-rendering the form in place ("Try an
+  // example", inline field errors) must not pull the submit button out of sight.
+  if (currentView !== name) {
+    currentView = name;
+    window.scrollTo(0, 0);
+  }
 }
 
 function showInputView(inputs = EMPTY_INPUTS, errors = {}) {
