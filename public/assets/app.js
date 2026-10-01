@@ -4,6 +4,7 @@
 
 import { verifyProof } from './lnproof/index.js';
 import { $, icon } from './ui/dom.js';
+import { displayText } from './ui/safe-text.js';
 import { formatSats } from './ui/format.js';
 import { hasFragmentParameters, proofUrl, readProofParameters } from './ui/url.js';
 import { explanationSection } from './ui/views/explanation.js';
@@ -47,6 +48,7 @@ function showInputView(inputs = EMPTY_INPUTS, errors = {}) {
   fillForm(inputs);
   setFieldError('bolt11', errors.bolt11);
   setFieldError('preimage', errors.preimage);
+  setFieldError('hash', errors.hash);
 }
 
 /** Verifies the inputs and shows the result, or the form with an error message. */
@@ -58,15 +60,19 @@ function showProof(inputs, { updateUrl }) {
     showInputView(inputs, { bolt11: error.message });
     return;
   }
-  if (proof.preimageError) {
-    showInputView(inputs, { preimage: proof.preimageError });
+  if (proof.preimageError || proof.hashError) {
+    showInputView(inputs, { preimage: proof.preimageError, hash: proof.hashError });
     return;
   }
-  if (updateUrl) {
-    history.pushState(null, '', proofUrl(inputs));
-    currentRoute = routeKey();
+  try {
+    showResultView(proof, inputs);
+    if (updateUrl) {
+      history.pushState(null, '', proofUrl(inputs));
+      currentRoute = routeKey();
+    }
+  } catch {
+    showInputView(inputs, { bolt11: 'Could not display this proof. Check the input and try again.' });
   }
-  showResultView(proof, inputs);
 }
 
 function showResultView(proof, inputs) {
@@ -103,7 +109,11 @@ const formInputs = () => ({ bolt11: $('#in-bolt11'), preimage: $('#in-preimage')
 
 function fillForm(inputs) {
   const fields = formInputs();
-  for (const name of Object.keys(fields)) fields[name].value = inputs[name] ?? '';
+  for (const name of Object.keys(fields)) {
+    // Keep oversized URL input from being copied wholesale into the DOM. The extra character
+    // preserves the over-limit error if the user retries instead of silently accepting truncation.
+    fields[name].value = (inputs[name] ?? '').slice(0, fields[name].maxLength + 1);
+  }
   if (inputs.hash) $('#opt-hash').open = true;
 }
 
@@ -116,7 +126,7 @@ function setFieldError(name, message) {
   const input = $(`#in-${name}`);
   const error = $(`#err-${name}`);
   error.hidden = !message;
-  error.textContent = message ?? '';
+  error.textContent = displayText(message ?? '');
   input.classList.toggle('invalid', Boolean(message));
   if (message) input.setAttribute('aria-invalid', 'true');
   else input.removeAttribute('aria-invalid');
@@ -128,7 +138,7 @@ function setUpForm() {
     showProof(readForm(), { updateUrl: true });
   });
   $('#btn-example').addEventListener('click', () => showInputView(EXAMPLE_INPUTS));
-  for (const name of ['bolt11', 'preimage']) {
+  for (const name of ['bolt11', 'preimage', 'hash']) {
     $(`#in-${name}`).addEventListener('input', () => setFieldError(name, null));
   }
   // Enter in the invoice field moves on to the preimage instead of adding a line break
@@ -149,11 +159,15 @@ const routeKey = () => JSON.stringify(readProofParameters());
 const isInPageAnchor = () => location.hash.length > 1 && !hasFragmentParameters() && !location.search;
 
 function route() {
-  const key = routeKey();
+  let parameters;
+  try { parameters = readProofParameters(); } catch (error) {
+    showInputView(EMPTY_INPUTS, { bolt11: error.message });
+    return;
+  }
+  const key = JSON.stringify(parameters);
   // Following in-page anchors also fires popstate: only re-render when the proof changed.
   if (currentRoute !== null && (key === currentRoute || isInPageAnchor())) return;
   currentRoute = key;
-  const parameters = readProofParameters();
   if (parameters.bolt11) showProof(parameters, { updateUrl: false });
   else showInputView();
 }

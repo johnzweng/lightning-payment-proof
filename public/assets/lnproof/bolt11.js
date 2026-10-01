@@ -6,9 +6,12 @@ import { bytesToHex, concatBytes, hexToBytes, readUintBE } from './bytes.js';
 import { KNOWN_NODES } from './known-nodes.js';
 import { derEncodeSignature, ecdsaRecover, ecdsaVerify, isHighS } from './secp256k1.js';
 import { sha256 } from './sha256.js';
+import { MAX_DATE_SECONDS, MAX_FIELDS, MAX_ROUTE_HOPS, normalizeInvoice } from './input.js';
 import {
   SPARK_FALLBACK_VERSION, SPARK_SCID_SENTINEL, decodeSparkAddress, encodeSparkAddress, findSparkWallet,
 } from './spark.js';
+
+export { normalizeInvoice } from './input.js';
 
 const TIMESTAMP_WORDS = 7;
 const SIGNATURE_WORDS = 104; // 520 bits: 64-byte signature (r ‖ s) + 1-byte recovery id
@@ -55,11 +58,6 @@ const FEATURE_NAMES = {
   148: 'option_trampoline', 256: 'option_zero_conf',
 };
 
-/** Accepts what people paste: surrounding whitespace, line breaks and a "lightning:" prefix. */
-export function normalizeInvoice(input) {
-  return String(input ?? '').replace(/\s+/g, '').replace(/^lightning:/i, '');
-}
-
 /**
  * Decodes a BOLT11 invoice and verifies its signature.
  * Throws an Error with a user-facing message if the invoice is malformed.
@@ -102,13 +100,18 @@ export function decodeInvoice(input) {
   };
 
   for (const { tag, data } of readTaggedFields(body.slice(TIMESTAMP_WORDS))) {
+    if (invoice.fields.length >= MAX_FIELDS) throw new Error('Invoice has too many fields.');
     invoice.fields.push(applyField(invoice, tag, data));
   }
   if (!invoice.paymentHash) throw new Error('The invoice has no payment hash.');
 
   invoice.expiresAt = timestamp + invoice.expirySeconds;
+  if (!Number.isSafeInteger(invoice.expiresAt) || invoice.expiresAt > MAX_DATE_SECONDS) {
+    throw new Error('Invoice expiry is out of range.');
+  }
   invoice.spark = findSparkWallet(invoice);
   invoice.signature = verifySignature(hrp, body, words.slice(-SIGNATURE_WORDS), invoice.payeeNodeKey);
+  if (invoice.signature.recoveryId > 3) throw new Error('Invalid invoice recovery id.');
   invoice.nodeId = invoice.signature.nodeId;
   return invoice;
 }
@@ -116,14 +119,14 @@ export function decodeInvoice(input) {
 /** "lnbc2500u" → network "bc", amount 2500 µBTC in msat. */
 function parsePrefix(hrp) {
   const match = PREFIX_PATTERN.exec(hrp);
-  if (!match) throw new Error(`Unknown invoice prefix “${hrp}”.`);
+  if (!match) throw new Error('Unknown invoice prefix.');
   return { network: match[1], amountMsat: parseAmount(match[2]) };
 }
 
 function parseAmount(amount) {
   if (!amount) return null;
   const match = /^(0|[1-9][0-9]*)([munp]?)$/.exec(amount);
-  if (!match) throw new Error(`Invalid amount “${amount}” in invoice.`);
+  if (!match) throw new Error('Invalid amount in invoice.');
   const [, digits, multiplier] = match;
   const value = BigInt(digits);
   if (multiplier !== 'p') return value * MSAT_PER_UNIT[multiplier];
@@ -154,7 +157,7 @@ function applyField(invoice, tag, data) {
   const fixed = FIXED_LENGTH_FIELDS[tag];
   if (fixed) {
     if (data.length === fixed.words && invoice[fixed.key] === null) {
-      invoice[fixed.key] = field.value = bytesToHex(bytes);
+      invoice[fixed.key] = field.value = bytesToHex(wordsToBytes(data, { strict: true }));
     } else {
       field.used = false;
     }
@@ -188,6 +191,10 @@ function applyField(invoice, tag, data) {
       break;
     }
     case 'r': {
+      if (bytes.length % ROUTE_HOP_BYTES !== 0) throw new Error('Invoice route hint is truncated.');
+      const hopCount = bytes.length / ROUTE_HOP_BYTES;
+      const previousHops = invoice.routeHints.reduce((count, hops) => count + hops.length, 0);
+      if (previousHops + hopCount > MAX_ROUTE_HOPS) throw new Error('Invoice has too many route hops.');
       const hops = parseRouteHint(bytes, invoice.network);
       if (hops.length) invoice.routeHints.push(hops);
       const isSparkMarker = hops.some((hop) => hop.sparkIdentity);
@@ -276,7 +283,7 @@ function verifySignature(hrp, bodyWords, signatureWords, statedNodeId) {
 
   return {
     nodeId,
-    valid: nodeId !== null && ecdsaVerify(signedHash, signature, hexToBytes(nodeId)),
+    valid: recoveryId <= 3 && nodeId !== null && ecdsaVerify(signedHash, signature, hexToBytes(nodeId)),
     nodeIdInInvoice: statedNodeId !== null,
     recoveredNodeId,
     recoveredMatchesStated: statedNodeId !== null ? statedNodeId === recoveredNodeId : null,

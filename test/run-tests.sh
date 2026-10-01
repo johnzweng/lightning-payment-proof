@@ -28,7 +28,7 @@ cd "$WORKDIR"
 pass() { echo "ok - $1"; }
 fail() { echo "not ok - $1"; exit 1; }
 
-python3 "$SCRIPT" --csv "$PAYMENT_DATA" || fail "exported invoice/preimage pairs: Python verification"
+python3 -I "$SCRIPT" --csv "$PAYMENT_DATA" || fail "exported invoice/preimage pairs: Python verification"
 pass "exported invoice/preimage pairs: Python verification"
 
 openssl_verifies() {
@@ -36,16 +36,19 @@ openssl_verifies() {
     [ "$(openssl dgst -sha256 -verify node.pem -signature signature.der invoice.bin 2>/dev/null)" = "Verified OK" ]
 }
 
-python3 "$SCRIPT" "$REAL_INVOICE" "$REAL_PREIMAGE" | grep -q "Preimage matches : YES" || fail "real invoice: preimage matches"
+mkdir "$WORKDIR/real" "$WORKDIR/spec"
+cd "$WORKDIR/real"
+python3 -I "$SCRIPT" "$REAL_INVOICE" "$REAL_PREIMAGE" | grep -q "Preimage matches : YES" || fail "real invoice: preimage matches"
 openssl_verifies && pass "real invoice: preimage matches, openssl verifies the signature" || fail "real invoice: openssl"
 
-python3 "$SCRIPT" "$SPEC_INVOICE" | grep -q "$SPEC_NODE_ID (recovered" || fail "spec invoice: node id recovery"
+cd "$WORKDIR/spec"
+python3 -I "$SCRIPT" "$SPEC_INVOICE" | grep -q "$SPEC_NODE_ID (recovered" || fail "spec invoice: node id recovery"
 openssl_verifies && pass "spec invoice: node id recovered, openssl verifies the signature" || fail "spec invoice: openssl"
 
 printf 'x' >> invoice.bin
 openssl_verifies && fail "tampered data must not verify" || pass "tampered data is rejected by openssl"
 
-output="$(python3 "$SCRIPT" "${REAL_INVOICE/qqqq/qqqp}" 2>&1 || true)"
+output="$(python3 -I "$SCRIPT" "${REAL_INVOICE/qqqq/qqqp}" 2>&1 || true)"
 [[ "$output" == *"checksum is WRONG"* ]] && pass "a typo is caught by the checksum" || fail "checksum"
 
 echo

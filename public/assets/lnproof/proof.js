@@ -4,11 +4,9 @@
 import { decodeInvoice } from './bolt11.js';
 import { bytesToHex, hexToBytes } from './bytes.js';
 import { sha256 } from './sha256.js';
+import { isHex, normalizeHex } from './input.js';
 
-/** Accepts pasted hex with whitespace, upper case or a "0x" prefix. */
-export function normalizeHex(input) {
-  return String(input ?? '').replace(/\s+/g, '').replace(/^0x/i, '').toLowerCase();
-}
+export { normalizeHex } from './input.js';
 
 /**
  * Verifies a proof of payment. Throws if the invoice cannot be decoded.
@@ -23,12 +21,16 @@ export function verifyProof(bolt11, preimageInput, paymentHashInput) {
     preimageHash: null,
     preimageMatches: null, // null: no preimage given
     preimageError: null,
+    hashError: null,
     givenHash: null,
     givenHashMatches: null,
     proven: false,
   };
 
-  const preimage = normalizeHex(preimageInput);
+  let preimage = '';
+  let givenHash = '';
+  try { preimage = normalizeHex(preimageInput); } catch (error) { proof.preimageError = error.message; }
+  try { givenHash = normalizeHex(paymentHashInput); } catch (error) { proof.hashError = error.message; }
   if (preimage) {
     proof.preimageError = describePreimageError(preimage);
     if (!proof.preimageError) {
@@ -38,10 +40,13 @@ export function verifyProof(bolt11, preimageInput, paymentHashInput) {
     }
   }
 
-  const givenHash = normalizeHex(paymentHashInput);
   if (givenHash) {
-    proof.givenHash = givenHash;
-    proof.givenHashMatches = givenHash === invoice.paymentHash;
+    if (!isHex(givenHash, 64)) {
+      proof.hashError = 'A payment hash is exactly 64 hexadecimal characters (0-9, a-f).';
+    } else {
+      proof.givenHash = givenHash;
+      proof.givenHashMatches = givenHash === invoice.paymentHash;
+    }
   }
 
   proof.proven = invoice.signature.valid && proof.preimageMatches === true;
@@ -49,7 +54,7 @@ export function verifyProof(bolt11, preimageInput, paymentHashInput) {
 }
 
 function describePreimageError(preimage) {
-  if (/^[0-9a-f]{64}$/.test(preimage)) return null;
+  if (isHex(preimage, 64)) return null;
   const invalidCharacters = /[^0-9a-f]/.test(preimage) ? ' and contains invalid characters' : '';
   return `A preimage is exactly 64 hexadecimal characters (0-9, a-f). This one has ${preimage.length} characters${invalidCharacters}.`;
 }

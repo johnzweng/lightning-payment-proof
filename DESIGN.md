@@ -175,13 +175,23 @@ available in secure contexts. The pure-JS version also runs unchanged in the Nod
   (amount, description) and preimage to the recipient. The page says so in the share section.
 
 ### 4.6 Security headers / hardening
+
+[SECURITY.md](SECURITY.md) is the detailed threat model, security policy and maintainer checklist.
+The design is layered: validate and bound input, preserve signed bytes, then protect each output
+context separately. In particular, valid BOLT11 encoding can carry hostile decoded text.
+
 - **CSP:** `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://mempool.space; …`.
   This is why the code never uses inline `style="…"` attributes (only CSSOM/classes).
 - **No `innerHTML` with user data.** The invoice description is attacker-controlled text
   (whoever creates the invoice chooses it). All DOM is built via a tiny `h()` helper with
   `textContent`. `innerHTML` is only used for the static SVG icon constants.
 - `frame-ancestors 'none'`: the page can't be framed to mislead people.
-- `Permissions-Policy`, `COOP`, `nosniff`, `server_tokens off`, dotfiles denied.
+- `Permissions-Policy`, `COOP`, `nosniff`, `server_tokens off`, dotfiles denied. A meta CSP also
+  protects generic static hosting; framing restrictions still require the nginx header.
+- Raw invoices are capped at 32,768 characters and normalized invoices at 16,384, with limits on
+  fields, route hops and numeric/date values. Preimages and optional hashes are bounded and validated.
+- Decoded display controls/bidi overrides are visibly escaped, never applied to the signed bytes.
+  Missing recovered keys and rendering errors have controlled failure states.
 
 ### 4.7 The only third-party request: node lookups on mempool.space
 The page asks `mempool.space/api/v1/lightning/nodes/<pubkey>` for alias, channel count and
@@ -192,7 +202,10 @@ meaningful than 66 hex characters. It also drives the private-node explanation (
 **Trade-off:** only *public keys* are sent (never invoice or preimage), with `credentials: omit`
 and no referrer. mempool.space was chosen because it has CORS enabled, no API key, and is
 well known. Lookups are **best-effort**. Failure or a timeout just shows "lookup unavailable", and the proof
-does not depend on it. mempool answers HTTP 500 (not 404) for unknown nodes; both mean
+does not depend on it. Requests are deduplicated and limited to 64 distinct keys per page load,
+with at most four concurrent requests. Responses are streamed with a 64 KiB limit and validated
+before display (including binding the response key to the request); redirects are rejected.
+Aliases are untrusted text, not authenticated identities. mempool answers HTTP 500 (not 404) for unknown nodes; both mean
 "not found". It can be removed by deleting the `nodeStatus()` calls (`ui/node-info.js`) and
 the `connect-src` entry.
 
@@ -203,13 +216,14 @@ We offer three levels, each removing trust in the page:
 
 1. **In the browser.** Instant, zero effort. The page must be trusted.
 2. **Check 1 + 2 in the terminal**, with values the page extracted from the invoice:
-   - `echo "<preimage>" | xxd -r -p | shasum -a 256` (macOS) / `sha256sum` (Linux)
+   - `printf '%s' '<preimage>' | xxd -r -p | shasum -a 256` (macOS) / `sha256sum` (Linux)
    - openssl verifies the signature over the signed invoice bytes with the node key.
    The math is done by the user's own tools; only the extraction is trusted.
-3. **Check 3: independent decoding.** A ~120-line stdlib-only Python script
+3. **Check 3: independent decoding.** A bounded, stdlib-only Python script
    (`verify_invoice.py`) reads the *raw invoice*, verifies the bech32 checksum, extracts payment hash,
-   node id (or recovers it), checks the preimage, and writes the files for openssl. Now nothing
-   from the page is trusted. The script is readable and shown inline.
+   node id (or recovers it), checks the preimage, and writes the files for openssl. This removes
+   reliance on the page's extraction, **not** trust in the script itself: review it or obtain it
+   from a trusted source. The script is readable and shown inline.
 
 Plus pointers to other independent tools: `lncli decodepayreq`, `lightning-cli decode`, and
 web decoders.
@@ -228,7 +242,16 @@ and was tested with the macOS system Python 3.9, 3.11, 3.12 and 3.15.
 - **No `#` comments in pasted shell code.** macOS's default shell is zsh, and interactive zsh
   does *not* treat `#` as a comment (`interactivecomments` is off). Pasted comments would
   produce `command not found`. Explanations therefore live in the page, next to the command.
-- **`cd "$(mktemp -d)"`** first, so no files are left in the user's home directory.
+- **Guarded temporary directory:** file-producing commands run in a bash/zsh subshell with
+  `pipefail`, `workdir="$(mktemp -d)" && cd "$workdir" && …`, and `&&` between stages.
+  Failure stops later steps; the user's current directory and shell options are unchanged.
+- **Shell output boundary:** `ui/commands.js` revalidates every dynamic argument, single-quotes
+  literals, rejects controls and uses fixed `printf '%s'` formats. Invoice descriptions are never
+  interpolated into commands or Python code. Visible and copied commands use the same tokens.
+- **Python isolation and files:** `python3 -I` ignores local/user import overrides. A quoted,
+  delimiter-checked here-document carries trusted script source; invoice/preimage arrive via argv.
+  The script exclusively creates fixed filenames (no overwriting or following symlinks), escapes
+  descriptions as ASCII JSON strings and fails before file creation on invalid/mismatching input.
 - **Public key as DER:** openssl needs a key file. We build it visibly as
   `SubjectPublicKeyInfo prefix (secp256k1) ‖ node id` in hex, so the reader can *see* the node
   id inside the command, rather than getting an opaque PEM blob.
@@ -271,8 +294,9 @@ The main quality goal was **low cognitive load for a non-expert who is possibly 
 - **Honest failure states:** wrong preimage → red "not a proof" with a likely cause; broken
   checksum → "probably not copied completely"; missing preimage → neutral "invoice checked,
   receipt missing".
-- **Input tolerance:** `lightning:` prefix, upper case, whitespace/line breaks, `0x` are all accepted.
-  Paste is messy in real life.
+- **Input tolerance:** `lightning:` prefix, uniformly upper-case invoices, ASCII space/tab/CR/LF,
+  and `0x` hex prefixes are accepted. Mixed-case invoices, hidden Unicode whitespace and
+  lookalikes are rejected, not silently transformed. Paste is messy, but normalization stays narrow.
 - Dark mode, mobile layout and a clean print layout (a printed receipt is a plausible use).
 - System fonts only, no web fonts. This keeps the page fast and avoids another third-party request.
 - English only for now. The layout doesn't depend on text length, so translations would be
@@ -345,6 +369,9 @@ operates them, so we don't claim it.
 - Spark: SDK address vector, legacy address, fallback-v31 sample (embedded in a synthetic invoice);
 - number, date and amount formatting;
 - the Python script + openssl path, including tampered-data and typo negative tests;
+- adversarial input, shell/here-document injection, terminal output spoofing, DOM/link safety,
+  clipboard/visible command equality, size/numeric limits, bounded API requests/responses,
+  fail-closed command execution, Python import isolation and file/symlink safety (see SECURITY.md);
 - an optional, Git-ignored CLN CSV export (`payment_preimage,bolt11`), checked row-by-row by the
   browser's JavaScript library (including signatures) and by the independent Python checksum,
   invoice-field and preimage verifier. Failures identify only row numbers, so test output does not

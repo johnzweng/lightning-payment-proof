@@ -2,6 +2,8 @@
 
 import { normalizeHex, normalizeInvoice } from '../lnproof/index.js';
 
+export const MAX_PROOF_URL_LENGTH = 131_072;
+
 const PARAMETER_NAMES = {
   bolt11: ['bolt11', 'invoice', 'pr'],
   preimage: ['preimage', 'pre'],
@@ -13,6 +15,7 @@ export const hasFragmentParameters = () => location.hash.includes('=');
 
 /** @returns {{ bolt11: string, preimage: string, hash: string }} empty strings when absent */
 export function readProofParameters() {
+  if (location.search.length + location.hash.length > MAX_PROOF_URL_LENGTH) throw new Error('Proof link is too long.');
   const query = new URLSearchParams(location.search);
   const fragment = new URLSearchParams(hasFragmentParameters() ? location.hash.slice(1) : '');
   const read = (names) => names.map((name) => query.get(name) || fragment.get(name)).find(Boolean) ?? '';

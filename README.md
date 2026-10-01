@@ -9,6 +9,8 @@
   <a href="https://lnproof.utxo.at"><b>Try it: lnproof.utxo.at</b></a>
   &nbsp;·&nbsp;
   <a href="DESIGN.md">Design notes</a>
+  &nbsp;·&nbsp;
+  <a href="SECURITY.md">Security</a>
   <br><br>
   <a href="https://github.com/johnzweng/lightning-payment-proof/actions/workflows/test.yml"><img src="https://github.com/johnzweng/lightning-payment-proof/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
   <a href="#zero-dependencies-on-purpose"><img src="https://img.shields.io/badge/dependencies-none-brightgreen" alt="No dependencies"></a>
@@ -52,7 +54,7 @@ covers exactly what this proves and what it doesn't.
   [why](#zero-dependencies-on-purpose).
 - **Private.** Everything is computed in your browser. Invoice and preimage are never uploaded.
 - **Plain words.** A clear verdict first, then a one-minute explanation for non-experts.
-- **No trust required.** Copy-paste commands for macOS and Linux repeat every check with
+- **Independent checks.** Reviewable copy-paste commands for macOS and Linux repeat every check with
   `shasum`, `openssl` and a short Python script that uses only the standard library.
 - **Receiver details.** Node id, explorer links and route hints, plus an explanation of why a
   private node is still a valid proof.
@@ -173,9 +175,11 @@ proof.invoice.nodeId;  // the receiver's node
 ./test/run-tests.sh      # or: npm test
 ```
 
-Needs Node.js ≥ 20, `python3` and `openssl`. The tests cover the BOLT #11 spec vectors, a
-real-world invoice, the Spark SDK vectors, SHA-256 known answers, and the Python + openssl path
-offered on the page.
+Needs Node.js ≥ 20, Python ≥ 3.8, bash, `openssl`, `xxd` and `shasum` (zsh and `sha256sum` are
+also tested when installed). The tests cover the BOLT #11 spec vectors, a real-world invoice,
+the Spark SDK vectors, SHA-256 known answers, and the Python + openssl path offered on the page.
+Security regressions exercise shell/here-document injection, terminal escapes, DOM/URL injection,
+resource limits, hostile API responses and file/symlink protection. See [SECURITY.md](SECURITY.md).
 
 ### Testing with a real CLN export
 
@@ -219,6 +223,17 @@ the setup. Bulk-test failures print only a row number, not the invoice or preima
 - **The web server** receives the query string of `?bolt11=…&preimage=…` links; the included
   config doesn't log it. For links that never reach any server, use a fragment:
   `#bolt11=…&preimage=…`.
+
+## Security
+
+Invoice text and proof links are untrusted input. The app uses bounded validation, text-only
+rendering and independently validated/quoted shell arguments; the Python verifier escapes
+terminal controls and refuses to overwrite files. **Review commands and scripts before running
+them**: these defenses cannot protect you from a compromised website supplying malicious code.
+
+[SECURITY.md](SECURITY.md) explains the threat model, limits, trust assumptions, test coverage,
+maintainer rules and how to report vulnerabilities. Commands target bash/zsh; Python should be
+run with `-I` in a new empty directory. Application limits can reject unusually large invoices.
 
 ## Contributing
 

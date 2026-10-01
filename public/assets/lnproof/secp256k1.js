@@ -108,7 +108,7 @@ export function decodePublicKey(bytes) {
   if (bytes.length === 65 && bytes[0] === 4) {
     const x = bytesToBigInt(bytes.subarray(1, 33));
     const y = bytesToBigInt(bytes.subarray(33));
-    return mod(y * y - x ** 3n - 7n, P) === 0n ? { x, y } : null;
+    return x < P && y < P && mod(y * y - x ** 3n - 7n, P) === 0n ? { x, y } : null;
   }
   return null;
 }
@@ -121,6 +121,7 @@ function compressPublicKey({ x, y }) {
 
 /** Splits a 64-byte compact signature (r ‖ s). Returns null if r or s is out of range. */
 function parseSignature(signature) {
+  if (signature.length !== 64) return null;
   const r = bytesToBigInt(signature.subarray(0, 32));
   const s = bytesToBigInt(signature.subarray(32, 64));
   const inRange = (v) => v > 0n && v < N;
@@ -149,7 +150,7 @@ export function ecdsaVerify(hash, signature, publicKey) {
  */
 export function ecdsaRecover(hash, signature, recoveryId) {
   const sig = parseSignature(signature);
-  if (!sig || recoveryId < 0 || recoveryId > 3) return null;
+  if (!sig || !Number.isInteger(recoveryId) || recoveryId < 0 || recoveryId > 3) return null;
   const r = liftX(sig.r + (recoveryId & 2 ? N : 0n), recoveryId & 1);
   if (!r) return null;
   const e = mod(bytesToBigInt(hash), N);
