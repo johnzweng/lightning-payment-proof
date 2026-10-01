@@ -55,14 +55,17 @@ function storyToken(label, value) {
 }
 
 /** SHA-256(preimage) = payment hash, one row above the other, with matching groups highlighted. */
-function hashEquation({ invoice, preimageHash, preimageMatches }) {
+function hashEquation({ invoice, preimage, preimageHash, preimageMatches }) {
   const computed = hexValue(preimageHash, 'hash', 'eq-hex');
   const expected = hexValue(invoice.paymentHash, 'hash', 'eq-hex');
   if (preimageMatches) highlightMatchingChunks(computed, expected);
 
+  // the preimage shows as its shortened orange pill — exactly like "the receipt" in the story above
+  const input = hexShort(preimage, 'pre');
+
   return h('div', { class: 'equation card-inset', id: 'check-hash' },
     h('div', { class: 'eq-row' },
-      h('div', { class: 'eq-label' }, h('span', { class: 'fn' }, 'SHA-256'), '( ', h('span', { class: 'c-pre' }, 'preimage'), ' )'),
+      h('div', { class: 'eq-label' }, h('span', { class: 'fn' }, 'SHA-256'), '( ', input, ' )'),
       computed),
     h('div', { class: 'eq-mid' },
       h('span', { class: `eq-sign ${preimageMatches ? 'ok' : 'bad'}` }, preimageMatches ? '=' : '≠'),
