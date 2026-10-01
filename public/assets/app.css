@@ -403,7 +403,9 @@ b { font-weight: 650; }
 .eq-hex .hex-chunk { padding: 0 4px; border-radius: 5px; margin-right: .35ch; transition: background .3s; }
 .eq-hex .hex-chunk.m { background: var(--c-hash-bg); }
 .eq-mid { display: flex; gap: 14px; align-items: center; margin: 14px 0; }
-.eq-sign { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-size: 1.4rem; font-weight: 800; color: #fff; }
+.eq-sign { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; }
+/* Symmetric SVG strokes avoid font-dependent baseline offsets. */
+.eq-sign .icon { width: 22px; height: 22px; stroke-width: 3; stroke-linecap: butt; }
 .eq-sign.ok { background: var(--ok); box-shadow: 0 0 0 6px var(--ok-ring); }
 .eq-sign.bad { background: var(--bad); box-shadow: 0 0 0 6px var(--bad-ring); }
 .eq-note { font-size: .88rem; color: var(--muted); font-weight: 600; }
