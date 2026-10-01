@@ -2,6 +2,7 @@
 
 import { badge, copyButton, hexBox, hexShort, section } from '../components.js';
 import { h } from '../dom.js';
+import { displayText } from '../safe-text.js';
 import { formatBtc, formatDate, formatDuration, formatRelative, formatSats, formatUtc } from '../format.js';
 
 export function invoiceDetailsSection({ invoice }) {
@@ -23,7 +24,7 @@ function summaryList(invoice) {
     ['Amount', invoice.amountMsat != null
       ? [h('strong', null, formatSats(invoice.amountMsat)), muted(` · ${formatBtc(invoice.amountMsat)}`)]
       : 'Any amount (chosen by the sender)'],
-    invoice.description != null && ['Description', h('span', { class: 'desc' }, invoice.description || '—')],
+    invoice.description != null && ['Description', h('span', { class: 'desc', dir: 'auto' }, displayText(invoice.description) || '—')],
     invoice.descriptionHash && ['Description hash', [hexShort(invoice.descriptionHash, 'muted'),
       h('span', { class: 'muted small' }, ' — the description itself was shared separately')]],
     ['Created', [formatDate(invoice.timestamp), muted(` · ${formatRelative(invoice.timestamp)}`)]],
@@ -58,7 +59,7 @@ function technicalDetails(invoice) {
           ` — ln + ${invoice.network} (${invoice.networkName})${invoice.amountMsat != null ? ' + amount' : ''}`]),
         row(null, 'Timestamp', `${invoice.timestamp} (${formatUtc(invoice.timestamp)})`),
         invoice.fields.map((field) => row(field.tag, field.used ? field.name : `${field.name} (ignored)`,
-          String(field.value ?? ''), { mono: true, unused: !field.used })),
+          displayText(field.value ?? ''), { mono: true, unused: !field.used })),
         row(null, 'Signature (r‖s)', signature.compactHex, { mono: true }),
         row(null, 'Recovery id', String(signature.recoveryId)),
         row(null, 'Signed data hash', `${signature.signedHashHex} (SHA-256 of ${signature.signedMessageLength} bytes)`, { mono: true }))),

@@ -2,6 +2,7 @@
 
 import { callout, copyButton, hexShort } from '../components.js';
 import { h, icon } from '../dom.js';
+import { displayText } from '../safe-text.js';
 import { formatBtc, formatDate, formatRelative, formatSats, shortHex } from '../format.js';
 import { nodeStatus } from '../node-info.js';
 
@@ -78,7 +79,7 @@ function receipt(invoice) {
     row('Amount', h('dd', null, invoice.amountMsat != null
       ? [h('strong', null, formatSats(invoice.amountMsat)), h('span', { class: 'muted' }, ` · ${formatBtc(invoice.amountMsat)}`)]
       : ['Any amount ', h('span', { class: 'muted' }, '(chosen by the sender)')]), 'receipt-amount'),
-    invoice.description != null ? row('For', h('dd', { class: 'desc' }, invoice.description || '—')) : null,
+    invoice.description != null ? row('For', h('dd', { class: 'desc', dir: 'auto' }, displayText(invoice.description) || '—')) : null,
     row('Paid to', h('dd', { class: 'dd-row' },
       h('span', { class: 'node-inline' }, icon('node', 'icon-sm'), hexShort(invoice.nodeId, 'node')),
       nodeStatus(invoice.nodeId, invoice.isMainnet))),
@@ -92,8 +93,8 @@ function receipt(invoice) {
 function checkList(proof) {
   const { signature } = proof.invoice;
   return h('ul', { class: 'checks' },
-    checkItem(signature.valid, 'Genuine invoice',
-      signature.valid ? 'digitally signed by the receiver’s node' : 'the signature does not match the invoice content',
+    checkItem(signature.valid, 'Valid signature',
+      signature.valid ? 'genuine only if the node ID matches your receiver' : 'the signature does not match the invoice content',
       '#verify-sig'),
     proof.preimage
       ? checkItem(proof.preimageMatches, 'Matching receipt', proof.preimageMatches

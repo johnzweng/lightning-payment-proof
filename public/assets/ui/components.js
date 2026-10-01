@@ -26,6 +26,8 @@ export function badge(kind, text, attributes) {
 }
 
 export function externalLink(href, label, className = 'link-ext') {
+  const url = new URL(href);
+  if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Unsafe external link.');
   return h('a', { href, target: '_blank', rel: 'noopener noreferrer', class: className }, label, icon('external', 'icon-xs'));
 }
 
@@ -34,6 +36,7 @@ export function externalLink(href, label, className = 'link-ext') {
  * Public keys (66 characters) show their 02/03 prefix as a separate group.
  */
 export function hexValue(value, kind, className) {
+  if (value == null) return h('span', { class: 'muted' }, 'unavailable');
   const element = h('span', { class: `hex hex-${kind}${className ? ' ' + className : ''}`, translate: 'no' });
   const firstGroupLength = value.length % 8;
   if (firstGroupLength) element.append(h('span', { class: 'hex-chunk' }, value.slice(0, firstGroupLength)));
@@ -45,12 +48,12 @@ export function hexValue(value, kind, className) {
 
 /** Abbreviated hex value ("0309…0d8a"); the full value is in the tooltip. */
 export function hexShort(value, kind) {
-  return h('span', { class: `hex hex-short hex-${kind}`, title: value, translate: 'no' }, shortHex(value));
+  return h('span', { class: `hex hex-short hex-${kind}`, title: value, translate: 'no' }, value == null ? 'unavailable' : shortHex(value));
 }
 
 /** A hex value in a box with a copy button. */
 export function hexBox(value, kind, { inline = false } = {}) {
-  return h('div', { class: inline ? 'hex-box hex-box-inline' : 'hex-box' }, hexValue(value, kind), copyButton(value));
+  return h('div', { class: inline ? 'hex-box hex-box-inline' : 'hex-box' }, hexValue(value, kind), value == null ? null : copyButton(value));
 }
 
 /* ---------- copy to clipboard ---------- */

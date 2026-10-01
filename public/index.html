@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
+  <!-- Defense in depth on static hosts without custom headers. frame-ancestors still needs nginx's header. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://mempool.space; base-uri 'none'; form-action 'none'">
   <title>Lightning Payment Proof</title>
   <meta name="description" content="Prove that a Bitcoin Lightning invoice was paid — verified in your browser, explained step by step, and checkable on your own computer.">
   <meta property="og:title" content="⚡ Lightning Payment Proof">
@@ -50,19 +52,20 @@
       <form id="proof-form" class="card form-card" novalidate autocomplete="off">
         <div class="field">
           <label for="in-bolt11"><span class="field-num">1</span> Lightning invoice</label>
-          <textarea id="in-bolt11" name="bolt11" rows="4" spellcheck="false" autocapitalize="off" placeholder="lnbc…" aria-describedby="err-bolt11"></textarea>
+          <textarea id="in-bolt11" name="bolt11" maxlength="32768" rows="4" spellcheck="false" autocapitalize="off" placeholder="lnbc…" aria-describedby="err-bolt11"></textarea>
           <p class="field-hint">The payment request you received from the recipient. It starts with <code>lnbc</code>.</p>
           <p class="field-error" id="err-bolt11" hidden></p>
         </div>
         <div class="field">
           <label for="in-preimage"><span class="field-num">2</span> Preimage <span class="muted">— the receipt</span></label>
-          <input id="in-preimage" name="preimage" type="text" spellcheck="false" autocapitalize="off" placeholder="64 characters, 0–9 and a–f" aria-describedby="err-preimage">
+          <input id="in-preimage" name="preimage" maxlength="256" type="text" spellcheck="false" autocapitalize="off" placeholder="64 characters, 0–9 and a–f" aria-describedby="err-preimage">
           <p class="field-hint">Shown by your wallet in the details of a completed payment, usually called <em>“preimage”</em> or <em>“proof of payment”</em>.</p>
           <p class="field-error" id="err-preimage" hidden></p>
         </div>
         <details class="field field-optional" id="opt-hash">
           <summary><span class="field-num field-num-muted">3</span> Payment hash <span class="muted">— optional</span></summary>
-          <input id="in-hash" name="hash" type="text" spellcheck="false" autocapitalize="off" placeholder="64 characters (only for cross-checking)" aria-label="Payment hash">
+          <input id="in-hash" name="hash" maxlength="256" type="text" spellcheck="false" autocapitalize="off" placeholder="64 characters (only for cross-checking)" aria-label="Payment hash" aria-describedby="err-hash">
+          <p class="field-error" id="err-hash" hidden></p>
           <p class="field-hint">Not needed — it is already contained in the invoice. If you enter it, it will be compared with the invoice.</p>
         </details>
         <div class="form-actions">

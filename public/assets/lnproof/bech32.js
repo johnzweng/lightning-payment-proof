@@ -1,6 +1,8 @@
 // bech32 and bech32m (BIP 173 / BIP 350) without the 90-character limit, which BOLT11 invoices exceed.
 // Data is handled as "words": 5-bit values, one per character.
 
+import { MAX_INVOICE_LENGTH } from './input.js';
+
 export const CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
 
 const GENERATOR = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
@@ -29,6 +31,7 @@ function expandHrp(hrp) {
  * @returns {{ hrp: string, words: number[], encoding: 'bech32'|'bech32m'|null }}
  */
 export function bech32Decode(text, label = 'text') {
+  if (typeof text !== 'string' || text.length > MAX_INVOICE_LENGTH) throw new Error(`The ${label} is too long or is not text.`);
   if (text !== text.toLowerCase() && text !== text.toUpperCase()) {
     throw new Error(`The ${label} mixes upper- and lower-case letters.`);
   }
@@ -38,12 +41,13 @@ export function bech32Decode(text, label = 'text') {
     throw new Error(`This does not look like a valid ${label} (the “1” separator is missing).`);
   }
   const hrp = text.slice(0, separator);
+  if (hrp.length > 83) throw new Error(`The ${label} prefix is too long.`);
   if (/[^\x21-\x7e]/.test(hrp)) throw new Error(`Invalid character in the ${label} prefix.`);
 
   const words = [];
   for (let i = separator + 1; i < text.length; i++) {
     const word = CHARSET.indexOf(text[i]);
-    if (word === -1) throw new Error(`Invalid character “${text[i]}” in the ${label} at position ${i + 1}.`);
+    if (word === -1) throw new Error(`Invalid character in the ${label} at position ${i + 1}.`);
     words.push(word);
   }
 
@@ -64,13 +68,21 @@ export function bytesToWords(bytes) {
 }
 
 /** Regroups bits: 5-bit words → bytes. Leftover bits are dropped unless `pad` is set (then zero-padded). */
-export function wordsToBytes(words, { pad = false } = {}) {
+export function wordsToBytes(words, { pad = false, strict = false } = {}) {
+  const remaining = (words.length * 5) % 8;
+  if (strict && (remaining >= 5 || (remaining && (words.at(-1) & ((1 << remaining) - 1))))) {
+    throw new Error('Invalid field padding.');
+  }
   return Uint8Array.from(regroupBits(words, 5, 8, pad));
 }
 
 /** Big-endian integer from 5-bit words. */
 export function wordsToInt(words) {
-  return words.reduce((value, word) => value * 32 + word, 0);
+  return words.reduce((value, word) => {
+    const next = value * 32 + word;
+    if (!Number.isSafeInteger(next)) throw new Error('Invoice integer is out of range.');
+    return next;
+  }, 0);
 }
 
 function regroupBits(values, fromBits, toBits, pad) {

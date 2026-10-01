@@ -4,42 +4,11 @@
 import { badge, externalLink } from './components.js';
 import { h } from './dom.js';
 import { formatBtc, formatNumber } from './format.js';
-
-const MEMPOOL_NODE_API = 'https://mempool.space/api/v1/lightning/nodes/';
-const LOOKUP_TIMEOUT_MS = 9000;
+import { isNodeId } from '../lnproof/input.js';
+import { lookupNode } from './node-lookup.js';
+import { displayText } from './safe-text.js';
 
 export const SPARK_DOCS_URL = 'https://docs.spark.money/learn/lightning';
-
-const lookups = new Map();
-
-/**
- * @returns {Promise<{ status: 'public', node: object } | { status: 'unknown' } | { status: 'unavailable' }>}
- *   'unknown': not in the public network map; 'unavailable': the lookup itself failed.
- */
-function lookupNode(pubkey) {
-  if (!lookups.has(pubkey)) lookups.set(pubkey, fetchNode(pubkey));
-  return lookups.get(pubkey);
-}
-
-async function fetchNode(pubkey) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
-  try {
-    const response = await fetch(MEMPOOL_NODE_API + pubkey, {
-      credentials: 'omit', referrerPolicy: 'no-referrer', signal: controller.signal,
-    });
-    if (response.ok) {
-      const node = await response.json();
-      return node?.public_key ? { status: 'public', node } : { status: 'unknown' };
-    }
-    // mempool.space answers 500 (not 404) for nodes it doesn't know
-    return { status: response.status === 404 || response.status === 500 ? 'unknown' : 'unavailable' };
-  } catch {
-    return { status: 'unavailable' };
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 /**
  * Badge(s) that fill in once the lookup finishes: alias and size for public nodes.
@@ -66,12 +35,13 @@ function describeLookup({ status, node }) {
   if (node.active_channel_count != null) facts.push(`${formatNumber(node.active_channel_count)} channels`);
   if (node.capacity) facts.push(formatBtc(BigInt(node.capacity) * 1000n).replace(/(\.\d{2})\d+/, '$1'));
   return [
-    node.alias ? h('span', { class: 'alias', translate: 'no' }, node.alias) : null,
+    node.alias ? h('span', { class: 'alias', translate: 'no', dir: 'auto' }, displayText(node.alias)) : null,
     badge('ok', ['public node', ...facts].join(' · ')),
   ].filter(Boolean);
 }
 
 export function explorerLinks(pubkey) {
+  if (!isNodeId(pubkey)) return null;
   return h('div', { class: 'explorers' },
     externalLink(`https://terminal.lightning.engineering/explore/${pubkey}`, 'Lightning Terminal', 'chip-link'),
     externalLink(`https://amboss.space/node/${pubkey}`, 'Amboss', 'chip-link'),
@@ -80,5 +50,5 @@ export function explorerLinks(pubkey) {
 }
 
 export function sparkscanLink(address, label = 'sparkscan.io') {
-  return externalLink(`https://www.sparkscan.io/address/${address}`, label, 'chip-link');
+  return externalLink(`https://www.sparkscan.io/address/${encodeURIComponent(address)}`, label, 'chip-link');
 }
